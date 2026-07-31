@@ -1,12 +1,12 @@
-import { drawQR, type DotStyle, type EccLevel, type CornerStyle } from "./qr"
+import { drawQR, type CornerStyle, type DotStyle, type EccLevel } from "./qr"
 
 export async function exportSVG(
   text: string,
   dotColor: string,
   bgColor: string,
-  dotStyle: "rounded" | "circle" | "square",
+  dotStyle: DotStyle,
   qrSize: number,
-  eccLevel: "L" | "M" | "Q" | "H",
+  eccLevel: EccLevel,
   logoImage?: string | null,
   includeLogo: boolean = false,
   framed: boolean = false,
@@ -187,6 +187,25 @@ export async function exportPDF(
   const png = canvas.toDataURL("image/png")
   doc.addImage(png, "PNG", 20, 30, qrSize, qrSize)
   return doc.output("blob")
+}
+
+export async function downloadPNG(svg: string, qrSize: number, fileName: string = 'qrkuy-qr.png'): Promise<void> {
+  // Render SVG to canvas, get PNG data URL, trigger download
+  const canvas = document.createElement('canvas')
+  canvas.width = qrSize
+  canvas.height = qrSize
+  const ctx = canvas.getContext('2d')!
+  const img = document.createElement('img')
+  img.src = 'data:image/svg+xml,' + encodeURIComponent(svg)
+  await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej() })
+  ctx.drawImage(img, 0, 0, qrSize, qrSize)
+  const pngData = canvas.toDataURL('image/png')
+  const a = document.createElement('a')
+  a.href = pngData
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 export async function downloadPDF(svg: string, qrSize: number, fileName: string = 'qrkuy-qr.pdf'): Promise<void> {
