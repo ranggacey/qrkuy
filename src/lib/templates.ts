@@ -11,6 +11,7 @@ export type QRTemplates =
   | 'social'
   | 'qris'
   | 'crypto'
+  | 'lightning'
 
 export interface TemplateField {
   key: string
@@ -33,6 +34,16 @@ export interface QRTemplate {
 }
 
 export const QR_TEMPLATES: QRTemplate[] = [
+  {
+    id: 'lightning',
+    label: 'Lightning Invoice',
+    icon: '⚡️',
+    description: 'Bitcoin Lightning invoice QR for fast payments',
+    fields: [
+      { key: 'invoice', label: 'Invoice', type: 'text', required: true, placeholder: 'lnbc1...'}
+    ],
+    build: ({ invoice }) => `lightning:${invoice}`,
+  },
   {
     id: 'url',
     label: 'Website/URL',
