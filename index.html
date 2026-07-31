@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="QRkuy — QR Code Generator brutalist ala anak UI/YK! Bikin QR code keren dengan warna kustom, gradient, logo, dan gaya dot." />
+    <meta property="og:title" content="QRkuy — QR Code Generator" />
+    <meta property="og:description" content="Bikin QR code keren dengan warna kustom, gradient, logo, dan gaya dot. Brutalist style!" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://qrkuy.vercel.app" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="QRkuy — QR Code Generator" />
+    <meta name="twitter:description" content="Bikin QR code keren dengan warna kustom, gradient, logo, dan gaya dot." />
+    <link rel="canonical" href="https://qrkuy.vercel.app" />
+    <title>QRkuy — QR Code Generator</title>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "QRkuy",
+      "description": "QR Code Generator brutalist dengan warna kustom, gradient, logo, dan gaya dot.",
+      "url": "https://qrkuy.vercel.app",
+      "applicationCategory": "Utility",
+      "operatingSystem": "Web"
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

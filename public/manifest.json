@@ -1,0 +1,17 @@
+{
+  "name": "QRkuy — QR Code Generator",
+  "short_name": "QRkuy",
+  "description": "QR Code Generator brutalist dengan warna kustom, gradient, logo, dan gaya dot.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#fee440",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

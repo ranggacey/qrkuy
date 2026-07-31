@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-border: #000;
+  --color-input: #fff;
+  --color-ring: #000;
+  --color-background: #f0f0f0;
+  --color-foreground: #000;
+  --color-primary: #fee440;
+  --color-primary-foreground: #000;
+  --color-secondary: #a0e3ff;
+  --color-secondary-foreground: #000;
+  --color-destructive: #ff6b6b;
+  --color-destructive-foreground: #000;
+  --color-muted: #e0e0e0;
+  --color-muted-foreground: #555;
+  --color-accent: #d0f0c0;
+  --color-accent-foreground: #000;
+  --color-popover: #fff;
+  --color-popover-foreground: #000;
+  --color-card: #fff;
+  --color-card-foreground: #000;
+  --color-pink: #ffaacc;
+  --color-mint: #d0f0c0;
+  --color-sky: #a0e3ff;
+  --color-lemon: #fee440;
+  --color-peach: #ffd1a9;
+  --color-lilac: #e0b0ff;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --animate-fade-up: fade-up 0.4s ease-out both;
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+:root {
+  --background: 0 0% 94%;
+  --foreground: 0 0% 0%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 0%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 54 96% 63%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 199 78% 82%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 88%;
+  --muted-foreground: 0 0% 33%;
+  --accent: 100 53% 78%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 0 100% 71%;
+  --destructive-foreground: 0 0% 0%;
+  --border: 0 0% 0%;
+  --input: 0 0% 100%;
+  --ring: 0 0% 0%;
+  --radius: 0px;
+}
+
+@layer base {
+  * {
+    border-color: #000;
+  }
+  body {
+    background-color: #f0f0f0;
+    color: #000;
+    font-weight: 500;
+  }
+  * {
+    border-radius: 0 !important;
+  }
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #e0e0e0;
+    border-left: 2px solid #000;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #000;
+    border: none;
+  }
+  /* Selection */
+  ::selection {
+    background: #fee440;
+    color: #000;
+  }
+}
+
+/* Print styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #root, #root * {
+    visibility: visible;
+  }
+  #root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  header, footer, button, .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}

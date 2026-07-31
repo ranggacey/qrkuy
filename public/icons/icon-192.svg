@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512">
+  <defs>
+    <style>
+      .qr-bg { fill: #fee440; }
+      .qr-dark { fill: #000; }
+      .qr-light { fill: #fff; }
+      .qr-corner { fill: #fee440; stroke: #000; stroke-width: 8; }
+    </style>
+  </defs>
+  <rect width="512" height="512" rx="48" class="qr-bg"/>
+  <g transform="translate(96, 96)">
+    <rect x="0" y="0" width="128" height="128" class="qr-dark"/>
+    <rect x="16" y="16" width="96" height="96" class="qr-light"/>
+    <rect x="32" y="32" width="64" height="64" class="qr-dark"/>
+    <rect x="256" y="0" width="128" height="128" class="qr-dark"/>
+    <rect x="272" y="16" width="96" height="96" class="qr-light"/>
+    <rect x="288" y="32" width="64" height="64" class="qr-dark"/>
+    <rect x="0" y="256" width="128" height="128" class="qr-dark"/>
+    <rect x="16" y="272" width="96" height="96" class="qr-light"/>
+    <rect x="32" y="288" width="64" height="64" class="qr-dark"/>
+    <g class="qr-dark">
+      <rect x="160" y="48" width="16" height="16"/>
+      <rect x="192" y="48" width="16" height="16"/>
+      <rect x="224" y="48" width="16" height="16"/>
+      <rect x="48" y="160" width="16" height="16"/>
+      <rect x="80" y="160" width="16" height="16"/>
+      <rect x="112" y="160" width="16" height="16"/>
+      <rect x="160" y="176" width="16" height="16"/>
+      <rect x="192" y="176" width="16" height="16"/>
+      <rect x="224" y="176" width="16" height="16"/>
+      <rect x="160" y="224" width="16" height="16"/>
+      <rect x="192" y="224" width="16" height="16"/>
+      <rect x="224" y="224" width="16" height="16"/>
+      <rect x="288" y="160" width="16" height="16"/>
+      <rect x="320" y="160" width="16" height="16"/>
+      <rect x="352" y="160" width="16" height="16"/>
+      <rect x="288" y="192" width="16" height="16"/>
+      <rect x="320" y="192" width="16" height="16"/>
+      <rect x="352" y="192" width="16" height="16"/>
+      <rect x="288" y="240" width="16" height="16"/>
+      <rect x="320" y="240" width="16" height="16"/>
+      <rect x="352" y="240" width="16" height="16"/>
+    </g>
+  </g>
+  <rect x="16" y="16" width="64" height="64" class="qr-corner"/>
+  <rect x="432" y="16" width="64" height="64" class="qr-corner"/>
+  <rect x="16" y="432" width="64" height="64" class="qr-corner"/>
+  <rect x="432" y="432" width="64" height="64" class="qr-corner"/>
+</svg>
