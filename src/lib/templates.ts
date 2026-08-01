@@ -96,7 +96,7 @@ export const QR_TEMPLATES: QRTemplate[] = [
       { key: 'note', label: 'Catatan', type: 'textarea', placeholder: 'Catatan tambahan' },
     ],
     build: (data) => {
-      const escape = (s: string) => s.replace(/[,\n;]/g, c => ({ ',': '\,', '\n': '\n', ';': '\;' }[c]!))
+      const escape = (s: string) => s.replace(/[,\n;]/g, c => ({ ',': ',', '\n': '\\n', ';': ';' }[c]!))
       const parts = ['BEGIN:VCARD', 'VERSION:3.0']
       if (data.name) parts.push(`FN:${escape(data.name)}`)
       if (data.phone) parts.push(`TEL:${escape(data.phone)}`)
