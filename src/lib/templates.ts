@@ -21,7 +21,7 @@ export type QRTemplates =
 export interface TemplateField {
   key: string
   label: string
-  type: 'text' | 'email' | 'tel' | 'url' | 'textarea' | 'select' | 'number' | 'color'
+  type: 'text' | 'email' | 'tel' | 'url' | 'textarea' | 'select' | 'number' | 'color' | 'datetime-local'
   required?: boolean
   placeholder?: string
   options?: { value: string; label: string }[]
@@ -96,7 +96,7 @@ export const QR_TEMPLATES: QRTemplate[] = [
       { key: 'note', label: 'Catatan', type: 'textarea', placeholder: 'Catatan tambahan' },
     ],
     build: (data) => {
-      const escape = (s: string) => s.replace(/[,\n;]/g, c => ({ ',': '\\,', '\n': '\\n', ';': '\\;' }[c]!))
+      const escape = (s: string) => s.replace(/[,\n;]/g, c => ({ ',': '\,', '\n': '\n', ';': '\;' }[c]!))
       const parts = ['BEGIN:VCARD', 'VERSION:3.0']
       if (data.name) parts.push(`FN:${escape(data.name)}`)
       if (data.phone) parts.push(`TEL:${escape(data.phone)}`)
@@ -119,8 +119,8 @@ export const QR_TEMPLATES: QRTemplate[] = [
       { key: 'title', label: 'Judul Event', type: 'text', required: true, placeholder: 'Meeting Team' },
       { key: 'description', label: 'Deskripsi', type: 'textarea', placeholder: 'Agenda meeting...' },
       { key: 'location', label: 'Lokasi', type: 'text', placeholder: 'Ruang Rapat A / Zoom' },
-      { key: 'start', label: 'Mulai', type: 'text', required: true, placeholder: '2026-08-15T10:00:00' },
-      { key: 'end', label: 'Selesai', type: 'text', required: true, placeholder: '2026-08-15T11:00:00' },
+      { key: 'start', label: 'Mulai', type: 'datetime-local', required: true, placeholder: '2026-08-15T10:00' },
+      { key: 'end', label: 'Selesai', type: 'datetime-local', required: true, placeholder: '2026-08-15T11:00' },
       { key: 'timezone', label: 'Timezone', type: 'text', default: 'Asia/Jakarta', placeholder: 'Asia/Jakarta' },
     ],
     build: (data) => {
@@ -245,20 +245,39 @@ export const QR_TEMPLATES: QRTemplate[] = [
       { key: 'amount', label: 'Jumlah (Rp)', type: 'number', required: false, placeholder: '50000' },
       { key: 'merchantName', label: 'Nama Merchant', type: 'text', required: false, placeholder: 'Toko Saya' },
     ],
-    build: ({ merchantId, amount, merchantName }) => {
-      // QRIS MPM Static format: 01= merchantPAN | 02= CRC | 03= no | 58= ID | 59= merchantName | 60= city | 61= postal | 62= addnData
-      const parts = ['000201', '010211', `0203${merchantId}`, '5303604', '5405' + (amount || ''), `5900${merchantName || 'Merchant'}`, '6110SEMARANG', '62070803', '6304']
-      // Simple checksum: CRC16/XModem of all bytes (excluding CRC), hex uppercase
+    build: (data) => {
+      // QRIS MPM Static (EMVCo) — proper TLV encoder
+      const tlv = (id: string, value: string) => {
+        const len = value.length.toString().padStart(2, '0')
+        return `${id}${len}${value}`
+      }
+      const merchantId = data.merchantId || ''
+      const amount = data.amount ? (parseFloat(data.amount) * 100).toFixed(0).padStart(2, '0') : ''
+      const merchantName = data.merchantName || ''
       const crc = (str: string) => {
         let crc = 0xFFFF
         for (let i = 0; i < str.length; i++) {
-          crc ^= str.charCodeAt(i) << 8
-          for (let j = 0; j < 8; j++) crc = (crc << 1) ^ (crc & 0x8000 ? 0x1021 : 0)
+          crc ^= (str.charCodeAt(i) << 8) & 0xFFFF
+          for (let j = 0; j < 8; j++) crc = ((crc << 1) ^ (crc & 0x8000 ? 0x1021 : 0)) & 0xFFFF
         }
         return ((crc >>> 0).toString(16).toUpperCase().padStart(4, '0'))
       }
+      // EMVCo payload: 00=Payload Format Indicator, 01=Point of Initiation, 26=Merchant Account Info, 52=Category Code, 53=Currency(360 IDR), 54=Amount, 58=Country(ID), 59=Merchant Name, 60=Merchant City, 62=Additional Data, 63=CRC
+      const parts = [
+        tlv('00', '01'),
+        tlv('01', amount ? '12' : '11'),
+        tlv('26', tlv('00', 'ID') + tlv('01', merchantId)),
+        tlv('52', '0000'),
+        tlv('53', '360'),
+      ]
+      if (amount) parts.push(tlv('54', amount))
+      parts.push(
+        tlv('58', 'ID'),
+        tlv('59', merchantName || 'QRKUY'),
+        tlv('60', 'SEMARANG'),
+      )
       const payload = parts.join('')
-      return payload + crc(payload)
+      return payload + tlv('63', crc(payload))
     },
   },
   {
