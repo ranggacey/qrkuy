@@ -33,8 +33,8 @@ declare global {
   }
 }
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { drawQR } from "@/lib/qr"
-import type { EccLevel } from "@/lib/qr"
+import { drawQR, getQRMeta } from "@/lib/qr"
+import type { EccLevel, CornerStyle } from "@/lib/qr"
 import { exportSVG, downloadSVG, downloadPDF, checkAccessibility } from "@/lib/export"
 import { COLOR_BLIND_PALETTES, QR_THEMES } from "@/lib/templates"
 // jsQR for image scanning fallback
@@ -64,6 +64,9 @@ function parseURLConfig(): Partial<{
   framed: boolean
   useHeart: boolean
   textLogo: string
+  cornerStyle: CornerStyle
+  transparentBg: boolean
+  quietZone: number
 }> {
   const p = new URLSearchParams(window.location.search)
   const cfg: ReturnType<typeof parseURLConfig> = {}
@@ -89,6 +92,15 @@ function parseURLConfig(): Partial<{
   if (p.has("frame")) cfg.framed = p.get("frame") === "1"
   if (p.has("heart")) cfg.useHeart = p.get("heart") === "1"
   if (p.has("logo")) cfg.textLogo = p.get("logo")!
+  if (p.has("corner")) {
+    const c = p.get("corner")!
+    if (["square", "rounded", "dot", "extra-rounded"].includes(c)) cfg.cornerStyle = c as CornerStyle
+  }
+  if (p.has("transp")) cfg.transparentBg = p.get("transp") === "1"
+  if (p.has("quiet")) {
+    const q = parseInt(p.get("quiet")!)
+    if (!isNaN(q) && q >= 0 && q <= 10) cfg.quietZone = q
+  }
   return cfg
 }
 
@@ -101,6 +113,9 @@ interface HistoryEntry {
   dotColor?: string
   bgColor?: string
   dotStyle?: DotStyle
+  cornerStyle?: CornerStyle
+  transparentBg?: boolean
+  quietZone?: number
   qrSize?: number
   eccLevel?: EccLevel
   gradientEnabled?: boolean
@@ -167,6 +182,9 @@ export default function App() {
   const [dotColor, setDotColor] = useState("#000000")
   const [bgColor, setBgColor] = useState("#ffffff")
   const [dotStyle, setDotStyle] = useState<DotStyle>("rounded")
+  const [cornerStyle, setCornerStyle] = useState<CornerStyle>("square")
+  const [transparentBg, setTransparentBg] = useState(false)
+  const [quietZone, setQuietZone] = useState(4)
   const [useHeart, setUseHeart] = useState(false)
   const [logoImage, setLogoImage] = useState<string | null>(null)
   const [error, setError] = useState("")
@@ -184,6 +202,7 @@ export default function App() {
   const [showEmbed, setShowEmbed] = useState(false)
   const [accessibility, setAccessibility] = useState<{ passed: boolean; issues: string[]; contrast: number } | null>(null)
   const [qrSvg, setQrSvg] = useState("")
+  const [qrMeta, setQrMeta] = useState<{ version: number; maxCapacity: Record<EccLevel, number>; currentCapacity: number; utilizationPercent: number } | null>(null)
   const [textLogo, setTextLogo] = useState("")
   const [fileName, setFileName] = useState("")
   const [urlMetadata, setUrlMetadata] = useState<{ domain: string; favicon: string } | null>(null)
@@ -227,6 +246,9 @@ export default function App() {
     if (cfg.dotColor) setDotColor(cfg.dotColor)
     if (cfg.bgColor) setBgColor(cfg.bgColor)
     if (cfg.dotStyle) setDotStyle(cfg.dotStyle)
+    if (cfg.cornerStyle) setCornerStyle(cfg.cornerStyle)
+    if (cfg.transparentBg !== undefined) setTransparentBg(cfg.transparentBg)
+    if (cfg.quietZone !== undefined) setQuietZone(cfg.quietZone)
     if (cfg.qrSize) setQrSize(cfg.qrSize)
     if (cfg.eccLevel) setEccLevel(cfg.eccLevel)
     if (cfg.gradientEnabled) setGradientEnabled(true)
@@ -237,7 +259,8 @@ export default function App() {
 
     if (cfg.text || text.trim()) {
       if (cfg.text) setText(cfg.text)
-      setTimeout(generateQR, 300)
+      // No direct generateQR call here — it would use stale config state.
+      // The debounced effect below regenerates once all URL config states settle.
     }
   }, [])
 
@@ -391,11 +414,13 @@ export default function App() {
     setLoading(true)
     syncURLParam("text", text.trim())
     try {
-      const dataUrl = await drawQR(text, dotColor, bgColor, dotStyle, useHeart, qrSize, eccLevel, logoImage, gradientEnabled, gradientTo, framed, textLogo, bgImage)
+      const dataUrl = await drawQR(text, dotColor, bgColor, dotStyle, useHeart, qrSize, eccLevel, logoImage, gradientEnabled, gradientTo, framed, textLogo, bgImage, cornerStyle, transparentBg, quietZone)
       setQrDataUrl(dataUrl)
-      const svg = await exportSVG(text, dotColor, bgColor, dotStyle, qrSize, eccLevel, logoImage, useHeart, framed, gradientEnabled, gradientTo, textLogo)
+      const svg = await exportSVG(text, dotColor, bgColor, dotStyle, qrSize, eccLevel, logoImage, useHeart, framed, gradientEnabled, gradientTo, textLogo, cornerStyle, transparentBg, quietZone)
       setQrSvg(svg)
       setAccessibility(checkAccessibility(dotColor, bgColor, qrSize))
+      const meta = await getQRMeta(text, eccLevel)
+      setQrMeta(meta)
       
       const entry: HistoryEntry = {
         text: text.trim(),
@@ -403,6 +428,9 @@ export default function App() {
         dotColor,
         bgColor,
         dotStyle,
+        cornerStyle,
+        transparentBg,
+        quietZone,
         qrSize,
         eccLevel,
         gradientEnabled,
@@ -436,7 +464,7 @@ export default function App() {
       genFnRef.current()
     }, 600)
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current) }
-  }, [text, dotColor, bgColor, dotStyle, qrSize, eccLevel, gradientEnabled, gradientTo, framed, useHeart, textLogo, logoImage, bgImage])
+  }, [text, dotColor, bgColor, dotStyle, cornerStyle, transparentBg, quietZone, qrSize, eccLevel, gradientEnabled, gradientTo, framed, useHeart, textLogo, logoImage, bgImage])
 
   // Fetch URL metadata when text looks like URL
   useEffect(() => {
@@ -492,6 +520,9 @@ export default function App() {
     if (dotColor !== "#000000") p.set("fg", dotColor)
     if (bgColor !== "#ffffff") p.set("bg", bgColor)
     if (dotStyle !== "rounded") p.set("style", dotStyle)
+    if (cornerStyle !== "square") p.set("corner", cornerStyle)
+    if (transparentBg) p.set("transp", "1")
+    if (quietZone !== 4) p.set("quiet", String(quietZone))
     if (qrSize !== 300) p.set("size", String(qrSize))
     if (eccLevel !== "M") p.set("ecc", eccLevel)
     if (gradientEnabled && gradientTo) p.set("grad", gradientTo)
@@ -504,7 +535,7 @@ export default function App() {
   async function downloadAsSVG() {
     if (!qrDataUrl) return
     try {
-      const svg = await exportSVG(text, dotColor, bgColor, dotStyle, qrSize, eccLevel, logoImage, useHeart, framed, gradientEnabled, gradientTo)
+      const svg = await exportSVG(text, dotColor, bgColor, dotStyle, qrSize, eccLevel, logoImage, useHeart, framed, gradientEnabled, gradientTo, textLogo, cornerStyle, transparentBg, quietZone)
       await downloadSVG(svg, `${fileName || `qrkuy-${text.replace(/[^a-z0-9]/gi, "-").slice(0, 20) || "qrcode"}`}.svg`)
     } catch (e) {
       console.error("SVG export failed:", e)
@@ -514,7 +545,7 @@ export default function App() {
   async function downloadAsPDF() {
     if (!qrDataUrl) return
     try {
-      const svg = await exportSVG(text, dotColor, bgColor, dotStyle, qrSize, eccLevel, logoImage, useHeart, framed, gradientEnabled, gradientTo)
+      const svg = await exportSVG(text, dotColor, bgColor, dotStyle, qrSize, eccLevel, logoImage, useHeart, framed, gradientEnabled, gradientTo, textLogo, cornerStyle, transparentBg, quietZone)
       await downloadPDF(svg, qrSize, `${fileName || `qrkuy-${text.replace(/[^a-z0-9]/gi, "-").slice(0, 20) || "qrcode"}`}.pdf`)
     } catch (e) {
       console.error("PDF export failed:", e)
@@ -558,6 +589,9 @@ export default function App() {
     if (item.dotColor) setDotColor(item.dotColor)
     if (item.bgColor) setBgColor(item.bgColor)
     if (item.dotStyle) setDotStyle(item.dotStyle)
+    if (item.cornerStyle) setCornerStyle(item.cornerStyle)
+    if (item.transparentBg !== undefined) setTransparentBg(item.transparentBg)
+    if (item.quietZone !== undefined) setQuietZone(item.quietZone)
     if (item.qrSize) setQrSize(item.qrSize)
     if (item.eccLevel) setEccLevel(item.eccLevel)
     if (item.gradientEnabled !== undefined) setGradientEnabled(item.gradientEnabled)
@@ -799,30 +833,6 @@ export default function App() {
                                         </div>
                                       </div>
                                       <div>
-                                        <label className="text-xs font-black uppercase mb-2 block tracking-wider dark:text-white">Logo</label>
-                                        <div className="flex items-center gap-2">
-                                          <input type="file" accept="image/png, image/jpeg, image/svg+xml" ref={logoRef} onChange={(e) => {
-                                            if (e.target.files?.[0]) {
-                                              const reader = new FileReader();
-                                              reader.onload = (ev) => {
-                                                setLogoImage(ev.target?.result as string);
-                                                setUseHeart(false);
-                                                setTextLogo("");
-                                              }
-                                              reader.readAsDataURL(e.target.files[0]);
-                                            }
-                                          }} className="hidden" />
-                                          <button onClick={() => logoRef.current?.click()} className="px-3 py-1.5 border-2 border-black dark:border-white text-xs font-black transition-all bg-white dark:bg-[#1a1a1a] dark:text-white hover:shadow-[2px_2px_0px_0px_#a0e3ff]">
-                                            <Upload size={14} className="inline mr-1" /> Upload
-                                          </button>
-                                          {logoImage && (
-                                            <button onClick={() => setLogoImage(null)} className="p-2 border-2 border-black dark:border-white text-xs font-black transition-all bg-red-400 text-black hover:bg-red-500">
-                                              <X size={14} />
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div>
                                         <label className="text-xs font-black uppercase mb-2 block tracking-wider dark:text-white">Ukuran</label>
                                         <div className="space-y-2">
                                           <input type="range" min="100" max="1000" step="50" value={qrSize} onChange={e => setQrSize(Number(e.target.value))}
@@ -850,6 +860,44 @@ export default function App() {
                                           <option value="Q">Quartile (25%)</option>
                                           <option value="H">High (30%)</option>
                                         </select>
+                                      </div>
+                                      <div>
+                                        <label className="text-xs font-black uppercase mb-2 block tracking-wider dark:text-white">Bentuk Eye</label>
+                                        <div className="flex flex-wrap gap-1">
+                                          {["square", "rounded", "dot", "extra-rounded"].map(s => (
+                                            <button key={s} onClick={() => setCornerStyle(s as CornerStyle)}
+                                              className={`px-3 py-1.5 border-2 border-black dark:border-white text-xs font-black transition-all ${cornerStyle === s ? "bg-black dark:bg-white text-white dark:text-black shadow-[2px_2px_0px_0px_#fee440]" : "bg-white dark:bg-[#1a1a1a] dark:text-white hover:shadow-[2px_2px_0px_0px_#a0e3ff]"}`}
+                                            >{s.charAt(0).toUpperCase() + s.slice(1)}</button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <label className="text-xs font-black uppercase mb-2 block tracking-wider dark:text-white">Quiet Zone</label>
+                                        <div className="space-y-2">
+                                          <input type="range" min="0" max="10" step="1" value={quietZone} onChange={e => setQuietZone(Number(e.target.value))}
+                                            className="w-full h-2 border-2 border-black dark:border-white bg-white dark:bg-[#1a1a1a] accent-[#fee440] cursor-pointer appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#fee440]"
+                                          />
+                                          <div className="flex items-center justify-between gap-1">
+                                            <span className="text-xs font-bold text-black/40 dark:text-white/40 min-w-[4ch]">{quietZone} modules</span>
+                                            <div className="flex gap-1">
+                                              {[0, 1, 2, 4, 6, 8, 10].map(n => (
+                                                <button key={n} onClick={() => setQuietZone(n)}
+                                                  className={`px-1.5 py-0.5 border-2 border-black dark:border-white text-[10px] font-bold transition-all ${quietZone === n ? "bg-black dark:bg-white text-white dark:text-black" : "bg-white dark:bg-[#1a1a1a] dark:text-white hover:bg-[#fee440]"}`}
+                                                >{n}</button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <label className="flex items-center justify-between cursor-pointer">
+                                          <span className="text-xs font-black uppercase tracking-wider dark:text-white">Transparent BG</span>
+                                          <button onClick={() => setTransparentBg(!transparentBg)}
+                                            className={`relative w-10 h-5 border-2 border-black dark:border-white transition-all ${transparentBg ? "bg-[#fee440]" : "bg-white dark:bg-[#1a1a1a]"}`}
+                                          >
+                                            <span className={`absolute top-0.5 w-3.5 h-3 bg-black transition-all ${transparentBg ? "left-5" : "left-0.5"}`} />
+                                          </button>
+                                        </label>
                                       </div>
                                     </div>
                                     {/* QR Themes */}
@@ -1045,6 +1093,21 @@ export default function App() {
                               ))}
                             </ul>
                           )}
+                        </div>
+                      )}
+                      {qrMeta && (
+                        <div className="border-2 border-black dark:border-white bg-white dark:bg-[#1a1a1a] px-3 py-2 text-[10px] font-black space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="dark:text-white">Versi QR: v{qrMeta.version}</span>
+                            <span className="text-black/40 dark:text-white/40">{qrMeta.utilizationPercent}% penuh</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[9px] font-bold text-black/50 dark:text-white/50">
+                            <span>Kapasitas max (L/M/Q/H): {qrMeta.maxCapacity.L} / {qrMeta.maxCapacity.M} / {qrMeta.maxCapacity.Q} / {qrMeta.maxCapacity.H} char</span>
+                            <span>Saat ini: {qrMeta.currentCapacity} char</span>
+                          </div>
+                          <div className="h-1.5 bg-white border border-black dark:border-white dark:bg-[#0f0f0f] overflow-hidden">
+                            <div className="h-full bg-[#fee440] transition-all" style={{ width: `${qrMeta.utilizationPercent}%` }} />
+                          </div>
                         </div>
                       )}
                       <div className="aspect-square max-w-[280px] mx-auto border-3 border-black bg-white p-3 shadow-[4px_4px_0px_0px_#000]">

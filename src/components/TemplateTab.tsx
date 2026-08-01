@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { 
-  Zap, FileArchive, Loader2, X, Printer, FileText
+  Zap, FileArchive, Loader2, X, Printer, FileText, Upload
 } from "lucide-react"
 import { QR_TEMPLATES } from "@/lib/templates"
-import { checkAccessibility, downloadBatchAsZip, downloadBatchAsPDF } from "@/lib/export"
+import { checkAccessibility, downloadBatchAsZip, downloadBatchAsPDF, parseCSV } from "@/lib/export"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface TemplateTabProps {
@@ -37,6 +37,19 @@ export default function TemplateTab({ text, setText, dotColor, bgColor, dotStyle
   const [batchProgress, setBatchProgress] = useState(0)
   const [batchGenerating, setBatchGenerating] = useState(false)
   const [batchExportFormat, setBatchExportFormat] = useState<'zip' | 'pdf'>('zip')
+  const csvInputRef = useRef<HTMLInputElement>(null)
+
+  const handleCSVUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const csvText = reader.result as string
+      const texts = parseCSV(csvText)
+      if (texts.length > 0) {
+        setBatchInput(texts.join('\n'))
+      }
+    }
+    reader.readAsText(file)
+  }
 
   // Check accessibility when colors change
   useEffect(() => {
@@ -113,9 +126,10 @@ export default function TemplateTab({ text, setText, dotColor, bgColor, dotStyle
 
   // Categorize templates
   const categories: Record<string, string[]> = {
-    'Konektivitas': ['wifi', 'social', 'whatsapp', 'email', 'sms', 'tel', 'geo'],
-    'Bisnis': ['vcard', 'event'],
-    'Konten': ['url'],
+    'Konektivitas': ['wifi', 'social', 'whatsapp', 'email', 'sms', 'tel', 'geo', 'bluetooth'],
+    'Bisnis': ['vcard', 'event', 'mecard'],
+    'Konten': ['url', 'appstore'],
+    'Pembayaran': ['qris', 'crypto', 'lightning', 'paypal', 'upi'],
   }
 
   const getCategory = (id: string) => {
@@ -136,6 +150,7 @@ export default function TemplateTab({ text, setText, dotColor, bgColor, dotStyle
     'Konektivitas': 'shadow-[4px_4px_0px_0px_#a0e3ff]',
     'Bisnis': 'shadow-[4px_4px_0px_0px_#d0f0c0]',
     'Konten': 'shadow-[4px_4px_0px_0px_#ffaacc]',
+    'Pembayaran': 'shadow-[4px_4px_0px_0px_#fee440]',
   }
 
   return (
@@ -300,6 +315,27 @@ export default function TemplateTab({ text, setText, dotColor, bgColor, dotStyle
                 placeholder={"https://site1.com\nhttps://site2.com\nHello World\nWIFI:S:MyWiFi;T:WPA;P:password;;"}
                 className="w-full border-2 border-black bg-white px-3 py-2 text-xs font-bold placeholder:text-black/30 focus:outline-none focus:shadow-[2px_2px_0px_0px_#000] font-mono resize-none h-32"
               />
+              {/* CSV upload */}
+              <div className="flex gap-2 items-center">
+                <button
+                  onClick={() => csvInputRef.current?.click()}
+                  className="flex items-center justify-center gap-1 border-2 border-black bg-[#d0f0c0] px-3 py-1.5 font-black text-xs uppercase transition-all hover:shadow-[2px_2px_0px_0px_#000]"
+                >
+                  <Upload size={12} /> Upload CSV
+                </button>
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleCSVUpload(file)
+                    if (csvInputRef.current) csvInputRef.current.value = ""
+                  }}
+                />
+                <span className="text-[10px] font-bold text-black/40">CSV: 1 QR per baris/kolom pertama</span>
+              </div>
               {/* Format selector */}
               <div className="flex gap-2 items-center">
                 <span className="text-xs font-black uppercase">Format:</span>

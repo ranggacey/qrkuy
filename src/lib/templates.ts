@@ -12,6 +12,11 @@ export type QRTemplates =
   | 'qris'
   | 'crypto'
   | 'lightning'
+  | 'mecard'
+  | 'paypal'
+  | 'upi'
+  | 'bluetooth'
+  | 'appstore'
 
 export interface TemplateField {
   key: string
@@ -286,6 +291,118 @@ export const QR_TEMPLATES: QRTemplate[] = [
       return address
     },
   },
+  {
+    id: 'mecard',
+          label: 'MeCard (Kontak Simple)',
+          icon: '👤',
+          description: 'Format kontak sederhana (lebih ringan dari vCard)',
+          fields: [
+            { key: 'name', label: 'Nama', type: 'text', required: true, placeholder: 'John Doe' },
+            { key: 'phone', label: 'Telepon', type: 'tel', placeholder: '+628****6789' },
+            { key: 'email', label: 'Email', type: 'email', placeholder: 'john@example.com' },
+            { key: 'url', label: 'Website', type: 'url', placeholder: 'https://example.com' },
+            { key: 'note', label: 'Catatan', type: 'textarea', placeholder: 'Catatan tambahan' },
+          ],
+          build: ({ name, phone, email, url, note }) => {
+            const parts = ['MECARD:']
+            if (name) parts.push(`N:${name}`)
+            if (phone) parts.push(`TEL:${phone}`)
+            if (email) parts.push(`EMAIL:${email}`)
+            if (url) parts.push(`URL:${url}`)
+            if (note) parts.push(`NOTE:${note}`)
+            parts.push(';')
+            return parts.join(';')
+          },
+        },
+        {
+          id: 'paypal',
+          label: 'PayPal Payment',
+          icon: '💙',
+          description: 'Link pembayaran PayPal.Me atau PayPal checkout',
+          fields: [
+            { key: 'username', label: 'Username PayPal.Me', type: 'text', required: true, placeholder: 'username' },
+            { key: 'amount', label: 'Jumlah (opsional)', type: 'number', required: false, placeholder: '10.00', step: '0.01' },
+            { key: 'currency', label: 'Mata Uang', type: 'select', required: false, default: 'USD', options: [
+              { value: 'USD', label: 'USD' },
+              { value: 'IDR', label: 'IDR' },
+              { value: 'EUR', label: 'EUR' },
+              { value: 'SGD', label: 'SGD' },
+            ]},
+            { key: 'note', label: 'Catatan', type: 'text', placeholder: 'Pembayaran untuk...' },
+          ],
+          build: ({ username, amount, currency, note }) => {
+            const params = new URLSearchParams()
+            if (amount) params.set('amount', amount)
+            if (currency && currency !== 'USD') params.set('currency', currency)
+            if (note) params.set('note', note)
+            return `https://paypal.me/${username}${params.toString() ? '?' + params.toString() : ''}`
+          },
+        },
+        {
+          id: 'upi',
+          label: 'UPI (India Payment)',
+          icon: '🇮🇳',
+          description: 'Unified Payments Interface QR untuk pembayaran di India',
+          fields: [
+            { key: 'vpa', label: 'VPA / UPI ID', type: 'text', required: true, placeholder: 'user@bank' },
+            { key: 'name', label: 'Nama Penerima', type: 'text', required: false, placeholder: 'Nama Merchant' },
+            { key: 'amount', label: 'Jumlah (opsional)', type: 'number', required: false, placeholder: '100', step: '0.01' },
+            { key: 'currency', label: 'Mata Uang', type: 'select', required: false, default: 'INR', options: [
+              { value: 'INR', label: 'INR' },
+            ]},
+            { key: 'note', label: 'Deskripsi', type: 'text', placeholder: 'Pembayaran untuk...' },
+          ],
+          build: ({ vpa, name, amount, currency, note }) => {
+            const params = new URLSearchParams()
+            params.set('pa', vpa)
+            if (name) params.set('pn', name)
+            if (amount) params.set('am', amount)
+            if (currency) params.set('cu', currency)
+            if (note) params.set('tn', note)
+            return `upi://pay?${params.toString()}`
+          },
+        },
+        {
+          id: 'bluetooth',
+          label: 'Bluetooth Pairing',
+          icon: '📶',
+          description: 'QR code untuk pairing perangkat Bluetooth (menggunakan URI scheme)',
+          fields: [
+            { key: 'mac', label: 'MAC Address', type: 'text', required: true, placeholder: 'AA:BB:CC:DD:EE:FF' },
+            { key: 'name', label: 'Nama Perangkat', type: 'text', required: false, placeholder: 'Speaker Saya' },
+            { key: 'class', label: 'Class of Device', type: 'text', required: false, placeholder: '0x240404 (Audio)' },
+          ],
+          build: ({ mac, name, class: cod }) => {
+            // Bluetooth pairing URI format (non-standard, for custom apps)
+            const params = new URLSearchParams()
+            params.set('mac', mac.replace(/[:-]/g, '').toUpperCase())
+            if (name) params.set('name', name)
+            if (cod) params.set('class', cod)
+            return `bluetooth://pair?${params.toString()}`
+          },
+        },
+        {
+          id: 'appstore',
+          label: 'App Store / Play Store',
+          icon: '📲',
+          description: 'Link langsung ke aplikasi di App Store (iOS) atau Play Store (Android)',
+          fields: [
+            { key: 'platform', label: 'Platform', type: 'select', required: true, default: 'ios', options: [
+              { value: 'ios', label: 'iOS App Store' },
+              { value: 'android', label: 'Google Play Store' },
+            ]},
+            { key: 'id', label: 'App ID / Bundle ID', type: 'text', required: true, placeholder: 'id123456789 atau com.example.app' },
+            { key: 'name', label: 'Nama Aplikasi (opsional)', type: 'text', required: false, placeholder: 'Nama App' },
+          ],
+          build: ({ platform, id }) => {
+            if (platform === 'ios') {
+              // iOS App Store link
+              return `https://apps.apple.com/app/id${id.replace(/^id/, '')}`
+            }
+            // Android Play Store link
+            return `https://play.google.com/store/apps/details?id=${id}`
+          },
+        },
 ]
 
 // Pre-made QR theme presets (full look: colors + dotStyle + gradient + frame + heart)
