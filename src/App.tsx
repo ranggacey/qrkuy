@@ -214,7 +214,15 @@ export default function App() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const genCount = useLocalStorage<number>("qrkuy-gen-count", 0)
   const genFnRef = useRef<() => Promise<void>>(async () => {})
+  const [notification, setNotification] = useState("")
   const { recentColors, addRecentColor, clearRecentColors } = useRecentColors()
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(""), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
 
   // Dark mode
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("qrkuy-dark-mode", 
@@ -561,6 +569,10 @@ export default function App() {
       setLogoImage(reader.result as string)
       setUseHeart(false)
       setTextLogo("")
+      if (eccLevel !== 'H') {
+        setEccLevel('H')
+        setNotification("Recovery level diatur ke High (H) untuk memastikan QR tetap bisa di-scan.")
+      }
     }
     reader.readAsDataURL(file)
   }
@@ -648,6 +660,14 @@ export default function App() {
                 ))}
               </div>
             </div>
+
+        {notification && (
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 mt-4">
+            <div className="border-2 border-black bg-[#fee440] px-4 py-3 font-black text-sm shadow-[3px_3px_0px_0px_#000] animate-fade-up">
+              ⚡️ {notification}
+            </div>
+          </div>
+        )}
 
       {/* ===== MAIN ===== */}
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6">
@@ -1021,7 +1041,18 @@ export default function App() {
                                     <div className="border-2 border-black dark:border-white bg-white dark:bg-[#1a1a1a] p-4 space-y-3">
                                       <label className="text-xs font-black uppercase tracking-wider block dark:text-white">Gambar Tengah (opsional)</label>
                                     <div className="flex flex-wrap gap-2">
-                                      <button onClick={() => { setUseHeart(!useHeart); if (!useHeart) { setLogoImage(null); setTextLogo("") } }}
+                                      <button onClick={() => { 
+                                        const newUseHeart = !useHeart
+                                        setUseHeart(newUseHeart)
+                                        if (newUseHeart) { 
+                                          setLogoImage(null)
+                                          setTextLogo("")
+                                          if (eccLevel !== 'H') {
+                                            setEccLevel('H')
+                                            setNotification("Recovery level diatur ke High (H) untuk memastikan QR tetap bisa di-scan.")
+                                          }
+                                        } 
+                                      }}
                                         className={`flex items-center gap-2 px-3 py-2 border-2 border-black text-xs font-black transition-all ${useHeart ? "bg-black text-white shadow-[2px_2px_0px_0px_#fee440]" : "bg-white hover:shadow-[2px_2px_0px_0px_#ffaacc]"}`}
                                       ><Heart size={14} /> {useHeart ? "Aktif" : "Hati"}</button>
                                       <button onClick={() => logoRef.current?.click()}
@@ -1036,7 +1067,17 @@ export default function App() {
                                     {/* Text Logo */}
                                     <div className="flex items-center gap-2 border-2 border-black dark:border-white bg-white dark:bg-[#1a1a1a] px-3 py-2">
                                       <span className="text-[10px] font-black uppercase tracking-wider dark:text-white shrink-0">Teks</span>
-                                      <input value={textLogo} onChange={e => { setTextLogo(e.target.value); if (e.target.value) { setUseHeart(false); setLogoImage(null) } }}
+                                      <input value={textLogo} onChange={e => { 
+                                        setTextLogo(e.target.value)
+                                        if (e.target.value) { 
+                                          setUseHeart(false)
+                                          setLogoImage(null)
+                                          if (eccLevel !== 'H') {
+                                            setEccLevel('H')
+                                            setNotification("Recovery level diatur ke High (H) untuk memastikan QR tetap bisa di-scan.")
+                                          }
+                                        } 
+                                      }}
                                         placeholder="QRkuy"
                                         maxLength={8}
                                         className="flex-1 border-0 bg-transparent px-1 py-0.5 text-sm font-bold focus:outline-none dark:text-white placeholder:text-black/30"
