@@ -262,6 +262,7 @@ export default function App() {
       // No direct generateQR call here — it would use stale config state.
       // The debounced effect below regenerates once all URL config states settle.
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Global keyboard shortcut: Ctrl+K or Cmd+K -> focus input
